@@ -1,0 +1,5 @@
+---
+# vars file for roles/config_svn
+
+svn_path: /var/www/svn
+

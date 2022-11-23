@@ -1,0 +1,87 @@
+---
+# tasks file for roles/config_svn
+- name: Intalling httpd, Subversion and mod_dav_svn packages
+  yum:
+    name: 
+      - httpd
+      - subversion
+      - mod_dav_svn 
+    state: latest  
+
+- name: Enable and start httpd
+  systemd:
+    name: httpd
+    state: started
+    enabled: true
+
+- name: Create the SVN directory in which we will store the codes
+  file:
+    path: "{{ svn_path }}"
+    state: directory
+    recurse: true
+    owner: apache
+    group: apache
+
+- name: Create a repository using the svnadmin
+  command: >
+    svnadmin create demo_repo
+    chdir={{ svn_path }}
+    creates={{ svn_path }}/demo_repo/README.txt
+  when: svn_create_demo_repo
+
+- name: Create a Subversion Configuration File
+  template:
+    src: subversion.conf.j2
+    dest: /etc/httpd/conf.d/subversion.conf
+    owner: apache
+    group: apache
+    mode: 0644
+  notify: restart apache
+
+- name: Add users to a password file and ensure permissions are set
+  htpasswd:
+    path: "{{ svn_passwd_file }}"
+    name: "{{ item.name }}"
+    password: "{{ item.passwd }}"
+    owner: apache
+    group: apache
+    mode: 0640
+  with_items:
+    - "{{ svn_users }}"
+  
+- name: get service facts
+  service_facts:
+
+- name: Try to work out how to access the service
+  debug:
+    var: ansible_facts.services["firewalld.service"]
+    
+- name: Allow http access if local firewalld is enabled
+  firewalld:
+    service: http
+    permanent: true
+    state: enabled
+    immediate: true
+  when: ansible_facts.services["firewalld.service"] is defined 
+
+- name: Allow apache to modify files in {{ svn_path }}
+  sefcontext:
+    target: "'{{ svn_path }}(/.*)?'"
+    setype: "{{ item }}"
+    state: present
+  loop:
+    - httpd_sys_content_t
+    - httpd_sys_rw_content_t
+  register: se_result
+
+- name: Apply new SELinux file context to filesystem
+  command: restorecon -irv {{ svn_path }}
+  changed_when: se_result.changed
+
+- name: Disable anonymous users by editing svnserve.conf file
+  copy:
+    src: svnserve.conf
+    dest: "{{ svn_path }}/demo_repo/conf/svnserve.conf"
+    owner: apache
+    group: apache
+    mode: 0640

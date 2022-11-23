@@ -1,0 +1,5 @@
+---
+# defaults file for roles/config_svn
+
+svn_create_demo_repo: true
+svn_passwd_file: /etc/svn-auth-users

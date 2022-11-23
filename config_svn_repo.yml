@@ -1,0 +1,10 @@
+---
+- name: Installation and configuration of subversion 
+  hosts: rhel9_svn
+  remote_user: ec2-user
+  become: true
+  vars_files:
+    - roles/config_svn/files/secret_vars.yml
+
+  roles:
+    - config_svn
