@@ -1,0 +1,21 @@
+---
+- name: install and configure SVN in client
+  hosts: rhel9_svn_client:rhel9_aap
+  remote_user: ec2-user
+  become: true
+  vars:
+    svn_repo_path: "http://54.162.20.145/svn/demo_repo/"
+    svn_local_dest: "/mnt/demo_repo"
+
+  tasks: 
+    - name: subversion installation
+      yum:
+        name: subversion
+        state: latest
+
+    - name: Checkout subversion repository to specified folder
+      subversion:
+        repo: "{{ svn_repo_path }}"
+        dest: "{{ svn_local_dest }}"
+        in_place: true
+     
